@@ -21,6 +21,7 @@
                    (conj acc r)))
                #{})))
 
+;; FIXME: simplify impl
 (defn enhanced-summary
   "Returns the enhanced `summary-str`.
   Appends potential `errors` to the result string."
@@ -83,37 +84,3 @@
                (or show-help? (some? error)))
       (print-summary result))
     result))
-
-(defn default-error-fn
-  "Prints the error to the console and exits the JVM process."
-  [e]
-  (println (format "\nAbort startup due to %s" e)))
-
-(defn default-exit-fn
-  "Prints the error to the console and exits the JVM process."
-  [e]
-  (default-error-fn e)
-  (System/exit 1))
-
-(defn start
-  "Parses the seq of `args` and calls the `ok-fn` with the parsed options as an argument.
-  If the provided `args` couldn't be parsed, then calls the `error-fn` with a map containing
-  the error.
-
-  `opts` is a map of keys:
-  {:cli-spec [,,,]            ;; clojure.tools.cli specification of supported args
-   :required #{,,,}           ;; set of required (long) keys
-   :print-summary? false      ;; defaults to true, can be suppressed
-   :ok-fn (fn [opts])         ;; single-arity fn which expects parsed args
-   :error-fn (fn [error-map]) ;; single-arity fn which expects the error map}
-
-  The custom `error-fn` is optional. The default implementation [[default-error-fn]]
-  prints the error to the console.
-  "
-  [args & {:as opts :keys [ok-fn error-fn cli-spec], :or {error-fn default-error-fn
-                                                          ok-fn identity}}]
-  {:pre [(some? cli-spec)]}
-  (let [{:as result :keys [error]} (get-valid-opts args opts)]
-    (if error
-      (error-fn result)
-      (ok-fn result))))
