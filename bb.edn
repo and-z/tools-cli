@@ -1,0 +1,6 @@
+{:paths ["src" "dev-src"]
+
+ :tasks
+ {:requires ([dev])
+
+  fizz dev/greet}}
