@@ -49,6 +49,43 @@
   (print (enhanced-summary result))
   (flush))
 
+(defn parse-long-name
+  "Converts parameter doc strings in form of `--foo [FOO]` to `:foo`"
+  [s]
+  (-> (clojure.string/split s #" ")
+      first
+      (clojure.string/replace "--" "")
+      keyword))
+
+(defn get-param-id
+  "Ignores three first positional description strings and searches for the `:id` attribute"
+  [[_ _ _ & attrs]]
+  (->> attrs
+       (apply hash-map)
+       :id))
+
+(defn param-id
+  "Determines the parameter identifier defined either via:
+   - `:id` attribute
+   - or double-dashed name from long option description string"
+  [[_ long-def :as param-spec]]
+  (or (get-param-id param-spec)
+      (parse-long-name long-def)))
+
+(defn collect-required
+  "Detects required parameters marked with '(required)' and returns
+  them as a set of keywordized names"
+  [cli-spec]
+  (->> cli-spec
+       (reduce (fn [acc [_ long-def doc :as param-spec]]
+                 (if (and (not (clojure.string/blank? doc))
+                          (clojure.string/includes? doc "(required)"))
+                   (conj acc (param-id param-spec))
+                   acc))
+               #{})))
+
+(def help-param ["-h" "--help" "Print this help"])
+
 (defn valid-opts
   "Parses the seq of `args` using the provided `cli-spec`.
   Returns
@@ -56,8 +93,10 @@
   - or the error map containing the `error` key and some additional hints
   - or `nil` if no options are required, no errors occurred and no args could be parsed
   "
-  [args {:keys [cli-spec required]}]
-  (let [{:keys [errors options summary]} (cli/parse-opts args cli-spec)
+  [args & {:keys [cli-spec]}]
+  (let [required (collect-required cli-spec)
+        cli-spec' (conj cli-spec help-param)
+        {:keys [errors options summary]} (cli/parse-opts args cli-spec')
         result
         (cond
           (some? (:help options)) (merge options {:show-help? true
@@ -78,9 +117,14 @@
 
   Prints the errors by default to the console. This behavior can be suppressed
   by setting `:print-summary?` key to `false`."
-  [args {:as opts :keys [print-summary?] :or {print-summary? true}}]
+  [args & {:as opts :keys [print-summary?] :or {print-summary? true}}]
   (let [{:as result :keys [show-help? error]} (valid-opts args opts)]
     (when (and print-summary?
                (or show-help? (some? error)))
       (print-summary result))
-    result))
+    (when-not (some? error)
+      result)))
+
+(def params
+  "Just an shorter alias for 'get-valid-opts'"
+  get-valid-opts)

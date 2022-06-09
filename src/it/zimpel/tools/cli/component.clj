@@ -64,7 +64,7 @@ will be called with the result of operation.
   [args & {:as opts :keys [ok-fn error-fn cli-spec], :or {error-fn default-error-fn
                                                           ok-fn identity}}]
   {:pre [(some? cli-spec)]}
-  (let [{:as result :keys [error]} (core/get-valid-opts args opts)]
+  (let [{:as result :keys [error]} (core/valid-opts args opts)]
     (if error
       (error-fn result)
       (ok-fn result))))
